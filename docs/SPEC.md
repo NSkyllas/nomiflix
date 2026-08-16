@@ -51,6 +51,8 @@ Root path confirmed as `/opt/nomiflix`. Open question: disk layout may still nee
 
 Like Nomify's uploader, the video is saved under a random base name (e.g. `uuid4().hex[:12]`) alongside a metadata sidecar written from the form fields, so there's no filename-collision or matching step left for a human (or the watcher) to get wrong.
 
+**Sidecar format decided as JSON** (`<base>.json`), not Nomify's key:value `.txt` — the fields here are flat (title/year/type/season/episode/overview) with no tracklist/credits-style nested structure to parse, so JSON needs no custom parser and is what `process_item.py`/`write_nfo.py`/`move_into_library.py` already consume.
+
 ### 3.2 Trigger
 `inotifywait` watches `_Inbox/` for new/completed file writes (reuse Nomify's watcher pattern — same tool, new logic). Triggers once both the video and its metadata sidecar are present, mirroring how Nomify's watcher waits for the mp3+txt pair.
 

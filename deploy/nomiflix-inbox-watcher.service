@@ -1,0 +1,14 @@
+[Unit]
+Description=Nomiflix inbox watcher (probe/transcode/file uploaded movies+shows)
+After=network.target
+
+[Service]
+Type=simple
+User=nomikos
+Environment=LIBRARY_ROOT=/opt/nomiflix
+ExecStart=/opt/nomiflix/scripts/watcher.sh
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nomiflix Upload</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; background: #293133; color: #e4e4e4; }
+  label { display: block; margin-top: 1rem; font-weight: 600; }
+  input[type=text], input[type=file], select, textarea {
+    width: 100%; padding: 0.4rem; box-sizing: border-box; font-family: inherit;
+    background: #383e42; color: #e4e4e4; border: 1px solid #4a5155; border-radius: 3px;
+  }
+  textarea { height: 8rem; }
+  button {
+    cursor: pointer; margin-top: 1.5rem; background: #4a5155; color: #e4e4e4;
+    border: 1px solid #5c6469; border-radius: 3px; padding: 0.5rem 1rem;
+  }
+  button:hover { background: #5c6469; }
+  .msg { padding: 0.6rem; margin-top: 1rem; border-radius: 4px; color: #1a1a1a; }
+  .msg.error { background: #e3a0a0; }
+  .msg.success { background: #a3d9a5; }
+  .hint { font-size: 0.85rem; color: #a9adaf; margin-top: 0.2rem; }
+  .row { display: flex; gap: 1rem; }
+  .row > div { flex: 1; }
+  #show-fields { display: none; }
+</style>
+</head>
+<body>
+<h1>Nomiflix Upload</h1>
+
+{% if error %}<div class="msg error">{{ error }}</div>{% endif %}
+{% if success %}<div class="msg success">{{ success }}</div>{% endif %}
+
+<form method="post" action="/upload" enctype="multipart/form-data">
+  <label for="video">Video file</label>
+  <input type="file" id="video" name="video" required>
+
+  <label for="title">Title</label>
+  <div class="hint" id="title-hint">The movie title. For a Show, this is the show name (used for every episode).</div>
+  <input type="text" id="title" name="title" required>
+
+  <label for="year">Year</label>
+  <input type="text" id="year" name="year" pattern="[0-9]{4}" placeholder="1954" required>
+
+  <label for="type">Type</label>
+  <select id="type" name="type" required>
+    <option value="" disabled selected>Choose a type</option>
+    <option value="movie">Movie</option>
+    <option value="show">Show</option>
+  </select>
+
+  <div id="show-fields">
+    <div class="row">
+      <div>
+        <label for="season">Season</label>
+        <input type="text" id="season" name="season" placeholder="1">
+      </div>
+      <div>
+        <label for="episode">Episode</label>
+        <input type="text" id="episode" name="episode" placeholder="1">
+      </div>
+    </div>
+  </div>
+
+  <label for="overview">Overview / plot (optional)</label>
+  <textarea id="overview" name="overview"></textarea>
+
+  <label for="poster">Poster image (optional)</label>
+  <input type="file" id="poster" name="poster" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp">
+
+  <button type="submit">Upload</button>
+</form>
+
+<script>
+  const typeSelect = document.getElementById("type");
+  const showFields = document.getElementById("show-fields");
+  const titleHint = document.getElementById("title-hint");
+
+  function syncShowFields() {
+    const isShow = typeSelect.value === "show";
+    showFields.style.display = isShow ? "block" : "none";
+    titleHint.style.display = isShow ? "block" : "none";
+  }
+
+  typeSelect.addEventListener("change", syncShowFields);
+  syncShowFields();
+</script>
+</body>
+</html>

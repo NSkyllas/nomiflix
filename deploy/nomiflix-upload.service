@@ -1,0 +1,17 @@
+[Unit]
+Description=Nomiflix upload form (video + metadata -> _Inbox)
+After=network.target
+
+[Service]
+Type=simple
+User=nomikos
+WorkingDirectory=/opt/nomiflix/upload
+Environment=LIBRARY_ROOT=/opt/nomiflix
+Environment=PORT=8081
+EnvironmentFile=/opt/nomiflix/upload/.env
+ExecStart=/usr/bin/python3 /opt/nomiflix/upload/app.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
