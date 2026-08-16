@@ -48,7 +48,7 @@ Shows/         → Jellyfin structure: Shows/Show Name/Season 01/Show Name S01E0
 
 Watcher (inotifywait-based, same tool as Nomify) → probe with `ffprobe` → three-way branch above → move into Jellyfin folder convention → delete original on success only → log outcome.
 
-**DVD sources are a special case**: a rip is a `VIDEO_TS/` folder or `.ISO`, not a single video file — it can't just drop into `_Inbox/` like a downloaded file. Needs a separate extraction step (HandBrake CLI is the likely tool) to pull the main title into a single file first. Not yet decided whether extraction happens on the VPS or locally before upload — flag this as open when it comes up.
+**DVD sources are a special case**: a rip is a `VIDEO_TS/` folder or `.ISO`, not a single video file — it can't just drop into `_Inbox/` like a downloaded file. Needs a separate extraction step (HandBrake CLI is the likely tool) to pull the main title into a single file first. Extraction happens **locally** on Nomikos's own machine, not the VPS — only the extracted single file gets uploaded to `_Inbox/`.
 
 ## Metadata
 
@@ -57,7 +57,6 @@ Jellyfin's built-in TMDb scraping works from folder/file naming convention alone
 ## Explicitly deferred / not yet decided
 
 - Long-term storage location if VPS disk fills up (block storage add-on vs. external storage) — revisit after a few months of real usage data.
-- DVD extraction step location (VPS vs. local).
 - Manual metadata override mechanism for unmatched/misidentified titles.
 - Progress/status visibility into long-running transcode jobs — not needed yet; manual check of `_Failed/` is sufficient for now.
 

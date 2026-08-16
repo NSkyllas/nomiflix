@@ -17,7 +17,7 @@ Companion to `CLAUDE.md`. That file has the "why"; this file has the "what," in 
 ## 2. Directory layout
 
 ```
-/srv/nomiflix/                     (proposed root — confirm/adjust on VPS)
+/opt/nomiflix/                     (root — matches Nomify's /opt/nomify convention)
 ├── _Inbox/                        # raw uploads land here
 ├── _Processing/                   # in-flight jobs (watcher moves file here while working)
 ├── _Failed/                       # failed transcodes; original preserved
@@ -33,7 +33,7 @@ Companion to `CLAUDE.md`. That file has the "why"; this file has the "what," in 
     └── watcher.log                # general pipeline activity log
 ```
 
-Open question: confirm actual mount point / disk layout once block storage decision is made (see CLAUDE.md deferred items).
+Root path confirmed as `/opt/nomiflix`. Open question: disk layout may still need to change if/when the block storage decision is made (see CLAUDE.md deferred items).
 
 ## 3. Ingestion pipeline
 
@@ -68,7 +68,7 @@ Not yet designed. Options to evaluate during implementation:
 - A `.txt` sidecar file (mirroring Nomify's metadata pairing) specifying type + target path explicitly
 - Manual sorting into `_Inbox/Movies/` vs `_Inbox/Shows/` subfolders at upload time (simplest — likely starting point)
 
-Recommend starting with the manual subfolder approach (simplest, matches how deliberate/curated Nomiflix's ingestion is expected to be) and revisiting if it becomes a bottleneck.
+**Decided**: manual subfolder approach — `_Inbox/Movies/` vs `_Inbox/Shows/` — simplest, matches how deliberate/curated Nomiflix's ingestion is expected to be. Revisit if it becomes a bottleneck.
 
 ## 4. Naming conventions (for Jellyfin auto-scraping)
 
@@ -85,7 +85,7 @@ Planned approach (to be refined):
 1. Extract main title from `VIDEO_TS`/ISO into a single video file — likely via **HandBrake CLI** (`HandBrakeCLI`), which can go directly to H.264/AAC and may replace the ffmpeg transcode step for this source type specifically.
 2. Drop the resulting single file into `_Inbox/` as normal, letting the standard pipeline handle it (probe will likely hit the "skip" or "codec-only" branch if HandBrake already output the right format).
 
-Open question: does extraction happen on the VPS (upload the ISO, extract there) or locally on Nomikos's own machine (extract first, upload the clean file)? No decision yet — likely depends on VPS disk headroom, since ISOs/VIDEO_TS folders are large and would need to exist alongside their extracted output temporarily.
+**Decided**: extraction happens locally on Nomikos's own machine, not on the VPS — avoids ISOs/VIDEO_TS folders (large) needing to coexist with their extracted output on the VPS's limited disk. Only the final clean H.264/AAC file gets uploaded.
 
 ## 6. Metadata matching (fallback not yet designed)
 
@@ -107,8 +107,8 @@ For titles the scraper gets wrong or can't find (expected to be common given Nom
 
 Keep this section current — move items here as they come up, remove once resolved.
 
-- [ ] Confirm actual disk mount/path for `_Inbox` etc. on the VPS
-- [ ] Movie vs. series detection mechanism at upload time
-- [ ] DVD extraction: VPS or local?
+- [x] Confirm actual disk mount/path for `_Inbox` etc. on the VPS — `/opt/nomiflix`, matches Nomify's `/opt` convention
+- [x] Movie vs. series detection mechanism at upload time — manual `_Inbox/Movies/` vs `_Inbox/Shows/` subfolders
+- [x] DVD extraction: VPS or local? — local, upload only the extracted output
 - [ ] Metadata override mechanism for scraper mismatches
 - [ ] When/how to revisit storage strategy (block storage vs. external) — revisit after a few months per CLAUDE.md
