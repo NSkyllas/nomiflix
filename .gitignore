@@ -1,0 +1,23 @@
+# Logs
+logs/
+*.log
+
+# Media / working directories (never commit actual video files)
+_Inbox/
+_Processing/
+_Failed/
+Movies/
+Shows/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Env / secrets
+.env
+*.key
+
+# OS
+.DS_Store
