@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 Type=simple
-User=nomikos
+User=root
 Environment=LIBRARY_ROOT=/opt/nomiflix
 ExecStart=/opt/nomiflix/scripts/watcher.sh
 Restart=on-failure

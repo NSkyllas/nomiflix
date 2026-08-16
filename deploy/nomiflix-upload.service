@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 Type=simple
-User=nomikos
+User=root
 WorkingDirectory=/opt/nomiflix/upload
 Environment=LIBRARY_ROOT=/opt/nomiflix
 Environment=PORT=8081
