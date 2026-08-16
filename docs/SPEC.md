@@ -37,12 +37,26 @@ Root path confirmed as `/opt/nomiflix`. Open question: disk layout may still nee
 
 ## 3. Ingestion pipeline
 
-### 3.1 Trigger
-`inotifywait` watches `_Inbox/` for new/completed file writes (reuse Nomify's watcher pattern — same tool, new logic).
+### 3.1 Upload
 
-### 3.2 Processing steps
+**Decided**: a small Flask upload form, directly mirroring Nomify's `upload/app.py`, is the sole entry point into `_Inbox/` — no direct file drops. Fields:
 
-1. **Detect** new file in `_Inbox/`.
+- **Video file** (required)
+- **Title** (required)
+- **Year** (required)
+- **Type**: Movie or Show (required) — the single source of truth for routing. No `_Inbox/Movies/` vs `_Inbox/Shows/` subfoldering — the upload form is the only way a file enters `_Inbox/`, so there's no manual filesystem step left to make redundant with this field
+- **Season / Episode** (required if Type = Show)
+- **Overview/plot** (optional)
+- **Poster image** (optional)
+
+Like Nomify's uploader, the video is saved under a random base name (e.g. `uuid4().hex[:12]`) alongside a metadata sidecar written from the form fields, so there's no filename-collision or matching step left for a human (or the watcher) to get wrong.
+
+### 3.2 Trigger
+`inotifywait` watches `_Inbox/` for new/completed file writes (reuse Nomify's watcher pattern — same tool, new logic). Triggers once both the video and its metadata sidecar are present, mirroring how Nomify's watcher waits for the mp3+txt pair.
+
+### 3.3 Processing steps
+
+1. **Detect** new video+sidecar pair in `_Inbox/`.
 2. **Move** to `_Processing/<filename>` (prevents watcher from double-triggering, gives a clear "in progress" state).
 3. **Probe** with `ffprobe`: read video codec, audio codec, resolution (height), container.
 4. **Branch:**
@@ -53,29 +67,20 @@ Root path confirmed as `/opt/nomiflix`. Open question: disk layout may still nee
    | height ≤ 1080p, codec/audio NOT already H.264+AAC | Transcode: re-encode/re-mux to H.264+AAC, **no scaling** |
    | height ≤ 1080p, codec/audio already H.264+AAC | Skip transcoding — just rename/move |
 
-5. **On transcode success** (or skip case): move final file into `Movies/` or `Shows/` using Jellyfin naming convention (see §4). Delete the original from `_Processing/`.
+5. **On transcode success** (or skip case): move final file into `Movies/` or `Shows/` using Jellyfin naming convention (see §4), and write a local NFO file from the sidecar's metadata alongside it (see §6). Delete the original from `_Processing/`.
 6. **On transcode failure**: move original (untouched) to `_Failed/<filename>`, write an error log (`ffprobe`/`ffmpeg` stderr, timestamp, filename) to `_Failed/<filename>.log`. Never delete on failure.
 7. **Log outcome** (success/skip/fail) to `logs/watcher.log` regardless of branch.
 
-### 3.3 Concurrency
+### 3.4 Concurrency
 
 Jobs run **strictly sequentially** — one transcode at a time. A simple lock file (e.g. `_Processing/.lock`) or a job queue directory is sufficient; no need for a full job queue system (e.g. Redis/Celery) at this scale. If a second file lands in `_Inbox/` while a job is running, it should wait in `_Inbox/` until the lock clears.
 
-### 3.4 Movie vs. series detection
-
-Not yet designed. Options to evaluate during implementation:
-- Filename/pattern heuristics (e.g. `S01E01` pattern present → series)
-- A `.txt` sidecar file (mirroring Nomify's metadata pairing) specifying type + target path explicitly
-- Manual sorting into `_Inbox/Movies/` vs `_Inbox/Shows/` subfolders at upload time (simplest — likely starting point)
-
-**Decided**: manual subfolder approach — `_Inbox/Movies/` vs `_Inbox/Shows/` — simplest, matches how deliberate/curated Nomiflix's ingestion is expected to be. Revisit if it becomes a bottleneck.
-
-## 4. Naming conventions (for Jellyfin auto-scraping)
+## 4. Naming conventions (for local NFO matching, not scraper matching)
 
 - **Movies:** `Movies/<Title> (<Year>)/<Title> (<Year>).<ext>`
 - **Series:** `Shows/<Show Name>/Season <NN>/<Show Name> S<NN>E<NN>.<ext>`
 
-These must be exact enough for Jellyfin's TMDb scraper to match. Given Nomiflix's focus on rare/obscure titles, expect a nontrivial rate of scraper mismatches — see §6.
+The pipeline constructs these paths itself directly from the upload form's Title/Year/Type/Season/Episode fields — it does not depend on Jellyfin successfully guessing anything from the name. See §6.
 
 ## 5. DVD rip handling (not yet implemented)
 
@@ -87,18 +92,21 @@ Planned approach (to be refined):
 
 **Decided**: extraction happens locally on Nomikos's own machine, not on the VPS — avoids ISOs/VIDEO_TS folders (large) needing to coexist with their extracted output on the VPS's limited disk. Only the final clean H.264/AAC file gets uploaded.
 
-## 6. Metadata matching (fallback not yet designed)
+## 6. Metadata matching
 
-Default: rely on Jellyfin's built-in TMDb scraper via naming convention (§4).
+**Decided**: no TMDb auto-scraping. Metadata comes entirely from the upload form (§3.1) — same philosophy as Nomify writing ID3 tags directly from its upload form rather than inferring them.
 
-For titles the scraper gets wrong or can't find (expected to be common given Nomiflix's focus on rare/obscure content), a manual override will likely be needed eventually. Not designed yet. Candidate approaches to evaluate later:
-- Jellyfin's native manual "identify" UI (may be sufficient on its own — check before building anything custom)
-- A `.txt` sidecar file per item (mirroring Nomify's `.txt` metadata pattern) with explicit TMDb ID or title/year override, consumed by the pipeline before the file is moved into place
+- The pipeline generates a local **NFO file** (`movie.nfo` for movies, per-episode `.nfo` for shows) from the sidecar's Title/Year/Overview/etc., written alongside the final video file when it's moved into `Movies/`/`Shows/` (§3.3 step 5).
+- Jellyfin's library is configured to use the **"Nfo" local metadata provider** as its source, with internet metadata providers (TMDb) disabled or deprioritized for the Nomiflix libraries specifically — so nothing is auto-matched or guessed; Jellyfin just reads what was explicitly typed in at upload time.
+- Poster image, if uploaded, is saved alongside as `poster.jpg`/`folder.jpg` (Jellyfin's local-image convention) rather than fetched from TMDb.
+
+This removes the scraper-mismatch problem (§7 old note) entirely rather than working around it — there's no automated matching step to get wrong.
 
 ## 7. Explicitly out of scope for now
 
 - Job status/progress visibility (manual `_Failed/` check is sufficient per current preference)
 - Automated storage overflow handling
+- Automated TMDb scraping/matching (deliberately not used at all — see §6)
 - Any credits/personnel/network-graph style feature (that's a Nomify-adjacent idea, not Nomiflix)
 - Multi-job parallelism
 - Docker/containerization
@@ -108,7 +116,7 @@ For titles the scraper gets wrong or can't find (expected to be common given Nom
 Keep this section current — move items here as they come up, remove once resolved.
 
 - [x] Confirm actual disk mount/path for `_Inbox` etc. on the VPS — `/opt/nomiflix`, matches Nomify's `/opt` convention
-- [x] Movie vs. series detection mechanism at upload time — manual `_Inbox/Movies/` vs `_Inbox/Shows/` subfolders
+- [x] Movie vs. series detection mechanism at upload time — a Type field (Movie/Show) on the upload form (§3.1); no `_Inbox/` subfoldering, since the form is the only entry point
 - [x] DVD extraction: VPS or local? — local, upload only the extracted output
-- [ ] Metadata override mechanism for scraper mismatches
+- [x] Metadata override mechanism for scraper mismatches — resolved by not using a scraper at all; metadata is typed in at upload and written to local NFO files (§6)
 - [ ] When/how to revisit storage strategy (block storage vs. external) — revisit after a few months per CLAUDE.md

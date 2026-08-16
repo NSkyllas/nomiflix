@@ -46,18 +46,17 @@ Movies/        → Jellyfin structure: Movies/Title (Year)/Title (Year).mkv
 Shows/         → Jellyfin structure: Shows/Show Name/Season 01/Show Name S01E01.mkv
 ```
 
-Watcher (inotifywait-based, same tool as Nomify) → probe with `ffprobe` → three-way branch above → move into Jellyfin folder convention → delete original on success only → log outcome.
+Entry point is a Flask upload form (mirrors Nomify's `upload/app.py`): Title/Year/Type/Season+Episode/Overview/poster, plus the video file, written into `_Inbox/` as a video+metadata-sidecar pair under a random base name. Watcher (inotifywait-based, same tool as Nomify) → probe with `ffprobe` → three-way branch above → move into Jellyfin folder convention, writing a local NFO file from the sidecar data alongside it → delete original on success only → log outcome.
 
 **DVD sources are a special case**: a rip is a `VIDEO_TS/` folder or `.ISO`, not a single video file — it can't just drop into `_Inbox/` like a downloaded file. Needs a separate extraction step (HandBrake CLI is the likely tool) to pull the main title into a single file first. Extraction happens **locally** on Nomikos's own machine, not the VPS — only the extracted single file gets uploaded to `_Inbox/`.
 
 ## Metadata
 
-Jellyfin's built-in TMDb scraping works from folder/file naming convention alone — no manual tagging step required, unlike Nomify's mutagen/ID3 approach. **But**: because Nomiflix's whole purpose is rare/obscure titles, auto-matching will be unreliable more often than for mainstream content (wrong year, foreign remake, no match at all). Expect to eventually need a manual override/fallback for matching, similar in spirit to Nomify's `.txt` sidecar approach — not designed yet, just anticipated.
+**No TMDb auto-scraping** — deliberate choice, not a fallback-of-last-resort. Because Nomiflix's whole purpose is rare/obscure titles, Jellyfin's automated matching would be unreliable often enough (wrong year, foreign remake, no match at all) that it's not worth building around. Instead, metadata is typed in explicitly at upload time (Title/Year/Type/Season+Episode/Overview), same philosophy as Nomify's `.txt`-sidecar-driven ID3 tagging. The pipeline writes that data into a local NFO file next to each video, and Jellyfin's library is configured to read local NFO only, with internet providers off. See `docs/SPEC.md` §6.
 
 ## Explicitly deferred / not yet decided
 
 - Long-term storage location if VPS disk fills up (block storage add-on vs. external storage) — revisit after a few months of real usage data.
-- Manual metadata override mechanism for unmatched/misidentified titles.
 - Progress/status visibility into long-running transcode jobs — not needed yet; manual check of `_Failed/` is sufficient for now.
 
 ## Working style

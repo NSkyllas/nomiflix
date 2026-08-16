@@ -5,7 +5,10 @@ Pipeline implementation goes here. Expected pieces (see `docs/SPEC.md` §3 for f
 - `watcher.py` (or `.sh`) — inotifywait-triggered entry point, watches `_Inbox/`
 - `probe.py` — wraps `ffprobe`, returns codec/resolution info for the branch decision
 - `transcode.py` — wraps `ffmpeg`, handles the three branches (scale+encode / codec-only / skip)
-- `move_into_library.py` — applies Jellyfin naming convention, moves into `Movies/` or `Shows/`
+- `write_nfo.py` — builds a local NFO file from the upload sidecar's metadata (Title/Year/Overview/etc.), see SPEC §6
+- `move_into_library.py` — applies Jellyfin naming convention, moves into `Movies/` or `Shows/`, drops the NFO (and poster, if any) alongside
 - `handbrake_extract.py` (later) — DVD `VIDEO_TS`/ISO extraction step, see SPEC §5
+
+The upload form itself (`upload/app.py`, mirroring Nomify's) is the entry point into `_Inbox/` — see SPEC §3.1. Not yet written.
 
 Keep the queue/lock mechanism simple (single lock file is enough per SPEC §3.3) — no need for a job queue framework at this scale.

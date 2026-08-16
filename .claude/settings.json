@@ -8,10 +8,27 @@
       "Bash(rmdir \"{docs,scripts,deploy}\" && ls -la)",
       "Bash(git add *)",
       "Bash(find / -maxdepth 3 -iname \"*nomify*\")",
-      "Read(//home/nomikos/**)"
+      "Read(//home/nomikos/**)",
+      "Bash(find /home/nomikos/GIT/nomify -iname \"*upload*\" -o -iname \"*.py\" | grep -v node_modules | sort)",
+      "Read(//home/nomikos/GIT/nomify/**)",
+      "Read(//home/nomikos/GIT/nomify/upload/**)",
+      "Read(//home/nomikos/GIT/nomify/scripts/**)",
+      "Read(//home/nomikos/GIT/nomify/upload/templates/**)",
+      "Bash(xargs -I{} sh -c 'echo === {} ===; cat {}')",
+      "Read(//home/nomikos/GIT/nomify/deploy/**)",
+      "Bash(ffmpeg -y -f lavfi -i testsrc=size=1920x1080:duration=1 -f lavfi -i sine=duration=1 -c:v libx264 -c:a aac /tmp/claude-1000/-home-nomikos-GIT-nomiflix/7fc30649-4c53-4a50-85bb-c3abdd3272b6/scratchpad/compliant_1080p.mkv -loglevel error)",
+      "Bash(ffmpeg -y -f lavfi -i testsrc=size=3840x2160:duration=1 -f lavfi -i sine=duration=1 -c:v libx264 -c:a aac /tmp/claude-1000/-home-nomikos-GIT-nomiflix/7fc30649-4c53-4a50-85bb-c3abdd3272b6/scratchpad/4k.mkv -loglevel error)",
+      "Bash(ffmpeg -y -f lavfi -i testsrc=size=1280x720:duration=1 -f lavfi -i sine=duration=1 -c:v mpeg4 -c:a mp3 /tmp/claude-1000/-home-nomikos-GIT-nomiflix/7fc30649-4c53-4a50-85bb-c3abdd3272b6/scratchpad/noncompliant_720p.avi -loglevel error)",
+      "Bash(python3 scripts/probe.py /tmp/claude-1000/-home-nomikos-GIT-nomiflix/7fc30649-4c53-4a50-85bb-c3abdd3272b6/scratchpad/compliant_1080p.mkv)",
+      "Bash(python3 scripts/probe.py /tmp/claude-1000/-home-nomikos-GIT-nomiflix/7fc30649-4c53-4a50-85bb-c3abdd3272b6/scratchpad/4k.mkv)",
+      "Bash(python3 scripts/probe.py /tmp/claude-1000/-home-nomikos-GIT-nomiflix/7fc30649-4c53-4a50-85bb-c3abdd3272b6/scratchpad/noncompliant_720p.avi)",
+      "Bash(python3 scripts/probe.py /tmp/claude-1000/-home-nomikos-GIT-nomiflix/7fc30649-4c53-4a50-85bb-c3abdd3272b6/scratchpad/does_not_exist.mkv)",
+      "Bash(echo \"exit code: $?\")",
+      "Bash(rm -f /tmp/claude-1000/-home-nomikos-GIT-nomiflix/7fc30649-4c53-4a50-85bb-c3abdd3272b6/scratchpad/*.mkv /tmp/claude-1000/-home-nomikos-GIT-nomiflix/7fc30649-4c53-4a50-85bb-c3abdd3272b6/scratchpad/*.avi)"
     ],
     "additionalDirectories": [
-      "/home/nomikos/GIT/nomiflix/{docs,scripts,deploy}"
+      "/home/nomikos/GIT/nomiflix/{docs,scripts,deploy}",
+      "/tmp/claude-1000/-home-nomikos-GIT-nomiflix/7fc30649-4c53-4a50-85bb-c3abdd3272b6/scratchpad"
     ]
   }
 }
