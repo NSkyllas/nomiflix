@@ -16,7 +16,7 @@ __pycache__/
 venv/
 
 # Env / secrets
-.env
+*.env
 *.key
 
 # OS

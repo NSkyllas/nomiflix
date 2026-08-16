@@ -1,0 +1,7 @@
+[Unit]
+Description=Update DuckDNS record with this VPS's current public IP (Nomiflix)
+
+[Service]
+Type=oneshot
+EnvironmentFile=/opt/nomiflix/deploy/duckdns.env
+ExecStart=/opt/nomiflix/deploy/duckdns-update.sh

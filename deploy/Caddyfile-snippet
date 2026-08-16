@@ -1,0 +1,10 @@
+# Caddy is a shared, VPS-wide service already running for Nomify — this
+# is NOT a full Caddyfile, just the block to manually append to the
+# existing system Caddyfile (/etc/caddy/Caddyfile, which currently holds
+# Nomify's nomify.duckdns.org / nomify-navidrome.duckdns.org blocks).
+# Do not replace the existing file with this — append this block to it,
+# then `sudo systemctl reload caddy`.
+
+nomiflix.duckdns.org {
+	reverse_proxy 127.0.0.1:8081
+}

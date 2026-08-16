@@ -1,0 +1,10 @@
+[Unit]
+Description=Run nomiflix-duckdns-update.service periodically
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
