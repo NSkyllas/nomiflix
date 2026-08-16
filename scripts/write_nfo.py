@@ -34,7 +34,28 @@ def _to_xml_bytes(root):
     return b'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' + ET.tostring(root, encoding="UTF-8")
 
 
-def build_movie_nfo(metadata):
+def _add_people(root, credits):
+    """Adds <director>/<credits>(writer)/<actor> elements from a
+    parse_credits.py result — the only three people-categories Kodi/
+    Jellyfin's NFO schema has a slot for. Everything else parsed (Producer,
+    Composer, etc.) has nowhere to go in the NFO; it only lives in the
+    separate credits JSON file. alias/uncredited/voice flags aren't
+    surfaced here either, same reason — full detail is in that JSON, the
+    NFO only carries what Jellyfin actually displays."""
+    if not credits:
+        return
+    for name in credits.get("director", []):
+        ET.SubElement(root, "director").text = name
+    for name in credits.get("writer", []):
+        ET.SubElement(root, "credits").text = name
+    for entry in credits.get("cast", []):
+        actor = ET.SubElement(root, "actor")
+        ET.SubElement(actor, "name").text = entry["name"]
+        if entry.get("character"):
+            ET.SubElement(actor, "role").text = entry["character"]
+
+
+def build_movie_nfo(metadata, credits=None):
     title = _require(metadata, "title")
     year = _require(metadata, "year")
     genre = _require(metadata, "genre")
@@ -43,11 +64,12 @@ def build_movie_nfo(metadata):
     ET.SubElement(root, "title").text = title
     ET.SubElement(root, "year").text = str(year)
     ET.SubElement(root, "genre").text = genre
+    _add_people(root, credits)
 
     return _to_xml_bytes(root)
 
 
-def build_episode_nfo(metadata):
+def build_episode_nfo(metadata, credits=None):
     title = _require(metadata, "title")
     season = _require(metadata, "season")
     episode = _require(metadata, "episode")
@@ -58,18 +80,19 @@ def build_episode_nfo(metadata):
     ET.SubElement(root, "season").text = str(season)
     ET.SubElement(root, "episode").text = str(episode)
     ET.SubElement(root, "genre").text = genre
+    _add_people(root, credits)
 
     return _to_xml_bytes(root)
 
 
-def write_nfo(video_path, metadata):
+def write_nfo(video_path, metadata, credits=None):
     """Writes the NFO next to video_path (same basename, .nfo extension).
     Returns the path written."""
     item_type = metadata.get("type")
     if item_type == TYPE_MOVIE:
-        content = build_movie_nfo(metadata)
+        content = build_movie_nfo(metadata, credits)
     elif item_type == TYPE_SHOW:
-        content = build_episode_nfo(metadata)
+        content = build_episode_nfo(metadata, credits)
     else:
         raise NfoError(f"metadata 'type' must be {TYPE_MOVIE!r} or {TYPE_SHOW!r}, got {item_type!r}")
 
@@ -80,8 +103,8 @@ def write_nfo(video_path, metadata):
 
 
 def main():
-    if len(sys.argv) != 3:
-        print("usage: write_nfo.py VIDEO_PATH METADATA_JSON_PATH", file=sys.stderr)
+    if len(sys.argv) not in (3, 4):
+        print("usage: write_nfo.py VIDEO_PATH METADATA_JSON_PATH [CREDITS_JSON_PATH]", file=sys.stderr)
         return 1
 
     video_path, metadata_json_path = sys.argv[1], sys.argv[2]
@@ -89,8 +112,13 @@ def main():
     with open(metadata_json_path, encoding="utf-8") as f:
         metadata = json.load(f)
 
+    credits = None
+    if len(sys.argv) == 4:
+        with open(sys.argv[3], encoding="utf-8") as f:
+            credits = json.load(f)
+
     try:
-        path = write_nfo(video_path, metadata)
+        path = write_nfo(video_path, metadata, credits)
     except NfoError as exc:
         print(f"nfo error: {exc}", file=sys.stderr)
         return 1

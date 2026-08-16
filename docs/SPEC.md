@@ -48,7 +48,7 @@ Root path confirmed as `/opt/nomiflix`. Open question: disk layout may still nee
 - **Season / Episode** (required if Type = Show)
 - **Genre** (required) — fixed dropdown, currently `Samurai` / `Science Fiction` / `Greek` / `Western`. Extend the list the same way if more categories come up.
 - **Poster image** (optional)
-- **Credits** (optional) — a raw paste of IMDB's "Full Cast & Crew" page. Stored as-is (`<base>-credits.txt`), **not parsed** — unlike Nomify's structured Discogs-credits parser, IMDB's format varies too much to usefully parse, and the value here is just having it archived next to the file, not queryable. There is no Overview/plot field — Credits replaces that role entirely.
+- **Credits** (optional) — a raw paste of IMDB's "Full Cast & Crew" page, uploaded as `<base>-credits.txt` and **parsed** by `scripts/parse_credits.py` during processing (§3.3 step 5) into department-grouped Name/role/alias/uncredited/voice records — see §6 for what happens to the result. A bad/unrecognized paste fails the **whole item** (routed to `_Failed/`, same as a transcode failure) rather than degrading gracefully — credits parsing is fail-loud like Nomify's tracklist/credits parsing, not best-effort. There is no Overview/plot field — Credits replaces that role entirely.
 
 Like Nomify's uploader, the video is saved under a random base name (e.g. `uuid4().hex[:12]`) alongside a metadata sidecar written from the form fields, so there's no filename-collision or matching step left for a human (or the watcher) to get wrong. Poster and credits are separate sidecar files (`<base>-poster.<ext>`, `<base>-credits.txt`), not folded into the JSON — named with a `-suffix` (not `<base>.<ext>`) specifically so they don't collide with `process_item.py`'s video-detection glob.
 
@@ -70,7 +70,7 @@ Like Nomify's uploader, the video is saved under a random base name (e.g. `uuid4
    | height ≤ 1080p, codec/audio NOT already H.264+AAC | Transcode: re-encode/re-mux to H.264+AAC, **no scaling** |
    | height ≤ 1080p, codec/audio already H.264+AAC | Skip transcoding — just rename/move |
 
-5. **On transcode success** (or skip case): move final file into `Movies/` or `Shows/` using Jellyfin naming convention (see §4), and write a local NFO file from the sidecar's metadata alongside it (see §6). Delete the original from `_Processing/`.
+5. **On transcode success** (or skip case): move final file into `Movies/` or `Shows/` using Jellyfin naming convention (see §4), and write a local NFO file from the sidecar's metadata (+ parsed credits, if any) alongside it (see §6). Delete the original from `_Processing/`. Credits are parsed **before** probe/transcode even starts, not after — a bad paste should fail fast, not burn a potentially long transcode first.
 6. **On transcode failure**: move original (untouched) to `_Failed/<filename>`, write an error log (`ffprobe`/`ffmpeg` stderr, timestamp, filename) to `_Failed/<filename>.log`. Never delete on failure.
 7. **Log outcome** (success/skip/fail) to `logs/watcher.log` regardless of branch.
 
@@ -102,9 +102,19 @@ Planned approach (to be refined):
 - The pipeline generates a local **NFO file** from the sidecar's Title/Year/Genre/Season+Episode, written as `<video basename>.nfo` alongside the final video file when it's moved into `Movies/`/`Shows/` (§3.3 step 5) — Jellyfin/Kodi both recognize this basename-matching convention, not just `movie.nfo`.
 - Jellyfin's library is configured to use the **"Nfo" local metadata provider** as its source, with internet metadata providers (TMDb) disabled or deprioritized for the Nomiflix libraries specifically — so nothing is auto-matched or guessed; Jellyfin just reads what was explicitly typed in at upload time.
 - Poster image, if uploaded, is saved alongside as `<video basename>-poster.<ext>` (Jellyfin/Kodi's basename-matching local-artwork convention) rather than fetched from TMDb.
-- Credits, if pasted, are saved alongside as `<video basename>-credits.txt` — raw text, not read by Jellyfin at all, purely an archival sidecar for Nomikos's own reference.
 
 This removes the scraper-mismatch problem (§7 old note) entirely rather than working around it — there's no automated matching step to get wrong.
+
+### 6.1 Credits: parsed, split between the NFO and a separate structured file
+
+`scripts/parse_credits.py` parses the raw IMDB paste into `{director: [names], writer: [names], cast: [{name, character, alias, uncredited, voice}], crew: {department: [{name, role, alias, uncredited, voice}]}}`. Two different destinations for the result:
+
+- **Director / Writer / Cast → the NFO.** Kodi/Jellyfin's NFO schema only has person-slots for `<director>`, `<credits>` (writer), and `<actor>` (name + character) — there is no `<producer>` or other department element in the schema, so those three are the *only* categories that can ever show up inside Jellyfin itself, no matter how thoroughly the rest gets parsed. `alias`/`uncredited`/`voice` flags aren't written into the NFO either — Jellyfin has nowhere to display them, they're only in the JSON below.
+- **Everything (all departments, full detail) → `<video basename>-credits.json`.** A durable structured record — same spirit as Nomify's `credits.json` (`write_credits_file` in `process-pair.py`) — written next to the video, meant for future analysis/visualization (e.g. a crew collaboration graph), not for Jellyfin to read. The raw pasted `.txt` is deleted once successfully parsed — the JSON is the durable artifact, the same "success renders the original disposable" pattern used for the pre-transcode video (§3.3 step 5/hard constraint #3 in `CLAUDE.md`).
+
+**IMDB paste quirks the parser specifically handles** (found by testing against a real "Full Cast & Crew" paste, not synthesized): a cast member's photo-caption line ("`Name in Other Film (Year)`") that can reference a completely different title than the one being catalogued; a cast member with *no* photo still getting a caption line, just as their bare name repeated with no "in ... (Year)" suffix (distinguished from a real Name line only by being an exact duplicate of the line before it — a character description being byte-identical to the actor's own name is treated as implausible); and departments where a lone person has no role/alias text at all, so the line right after their name is directly the next department header, not a detail line for them.
+
+**Known unresolvable ambiguity**: if a department ever has two people back-to-back with *neither* having role text, the parser cannot tell that apart from one person's Name+detail pair — there is no syntactic signal left after IMDB's HTML is flattened to plain text. Not seen in the one real example tested against; would surface as either a wrong pairing or (more likely) a "line N: expected a department header" fail-loud error if the department-whitelist lookahead doesn't line up.
 
 ## 7. Explicitly out of scope for now
 

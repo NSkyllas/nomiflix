@@ -69,7 +69,12 @@
       "Bash(bash -n /home/nomikos/GIT/nomiflix/scripts/watcher.sh)",
       "Bash(python3 -c \"import ast; ast.parse\\(open\\('/home/nomikos/GIT/nomiflix/upload/app.py'\\).read\\(\\)\\)\")",
       "Bash(python3 -c \"import ast; ast.parse\\(open\\('/home/nomikos/GIT/nomiflix/scripts/process_item.py'\\).read\\(\\)\\)\")",
-      "Bash(python3 -c \"import ast; ast.parse\\(open\\('/home/nomikos/GIT/nomiflix/scripts/write_nfo.py'\\).read\\(\\)\\)\")"
+      "Bash(python3 -c \"import ast; ast.parse\\(open\\('/home/nomikos/GIT/nomiflix/scripts/write_nfo.py'\\).read\\(\\)\\)\")",
+      "Bash(cat)",
+      "Bash(python3 parse_credits.py /tmp/claude-1000/-home-nomikos-GIT-nomiflix/7fc30649-4c53-4a50-85bb-c3abdd3272b6/scratchpad/solaris_credits.txt)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(python3 -c ' *)",
+      "Bash(python3 -c \"import ast; ast.parse\\(open\\('/home/nomikos/GIT/nomiflix/scripts/parse_credits.py'\\).read\\(\\)\\)\")"
     ],
     "additionalDirectories": [
       "/home/nomikos/GIT/nomiflix/{docs,scripts,deploy}",

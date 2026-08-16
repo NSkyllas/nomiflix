@@ -16,11 +16,12 @@ import traceback
 from datetime import datetime
 
 from move_into_library import MoveError, move_into_library
+from parse_credits import CreditsParseError, parse_credits
 from probe import BRANCH_SKIP, ProbeError, probe
 from transcode import TranscodeError, transcode
 from write_nfo import NfoError, write_nfo
 
-ExpectedError = (ProbeError, TranscodeError, MoveError, NfoError)
+ExpectedError = (ProbeError, TranscodeError, MoveError, NfoError, CreditsParseError)
 
 
 def find_video_file(processing, base):
@@ -71,6 +72,14 @@ def process_item(video_path, metadata_path, poster_path, credits_path, library_r
     with open(metadata_path, encoding="utf-8") as f:
         metadata = json.load(f)
 
+    # Parsed first, before any transcode/move work — a bad credits paste
+    # should fail fast and leave nothing half-done, not burn a long
+    # transcode only to fail afterward.
+    credits = None
+    if credits_path:
+        with open(credits_path, encoding="utf-8") as f:
+            credits = parse_credits(f.read())
+
     probe_result = probe(video_path)
 
     if probe_result["branch"] == BRANCH_SKIP:
@@ -98,10 +107,15 @@ def process_item(video_path, metadata_path, poster_path, credits_path, library_r
         shutil.move(poster_path, poster_dest)
 
     if credits_path:
-        credits_dest = os.path.splitext(dest)[0] + "-credits.txt"
-        shutil.move(credits_path, credits_dest)
+        # The structured JSON is the durable artifact — the raw paste is
+        # redundant once successfully parsed (same "success renders the
+        # original disposable" pattern as the pre-transcode video above).
+        credits_dest = os.path.splitext(dest)[0] + "-credits.json"
+        with open(credits_dest, "w", encoding="utf-8") as f:
+            json.dump(credits, f, indent=2, ensure_ascii=False)
+        os.remove(credits_path)
 
-    write_nfo(dest, metadata)
+    write_nfo(dest, metadata, credits)
     return dest, probe_result["branch"]
 
 
