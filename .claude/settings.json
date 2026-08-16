@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tar -tvf nomiflix.tar.gz)",
+      "Bash(mkdir -p /tmp/claude-1000/-home-nomikos-GIT-nomiflix/7fc30649-4c53-4a50-85bb-c3abdd3272b6/scratchpad/extract)",
+      "Bash(tar -xzf nomiflix.tar.gz -C /tmp/claude-1000/-home-nomikos-GIT-nomiflix/7fc30649-4c53-4a50-85bb-c3abdd3272b6/scratchpad/extract)",
+      "Bash(tar -xzf nomiflix.tar.gz --strip-components=1 -C .)",
+      "Bash(rmdir \"{docs,scripts,deploy}\" && ls -la)",
+      "Bash(git add *)"
+    ],
+    "additionalDirectories": [
+      "/home/nomikos/GIT/nomiflix/{docs,scripts,deploy}"
+    ]
+  }
+}
