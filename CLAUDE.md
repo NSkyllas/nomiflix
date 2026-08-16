@@ -52,7 +52,9 @@ Entry point is a Flask upload form (mirrors Nomify's `upload/app.py`): Title/Yea
 
 ## Metadata
 
-**No TMDb auto-scraping** — deliberate choice, not a fallback-of-last-resort. Because Nomiflix's whole purpose is rare/obscure titles, Jellyfin's automated matching would be unreliable often enough (wrong year, foreign remake, no match at all) that it's not worth building around. Instead, metadata is typed in explicitly at upload time (Title/Year/Type/Season+Episode/Overview), same philosophy as Nomify's `.txt`-sidecar-driven ID3 tagging. The pipeline writes that data into a local NFO file next to each video, and Jellyfin's library is configured to read local NFO only, with internet providers off. See `docs/SPEC.md` §6.
+**No TMDb auto-scraping** — deliberate choice, not a fallback-of-last-resort. Because Nomiflix's whole purpose is rare/obscure titles, Jellyfin's automated matching would be unreliable often enough (wrong year, foreign remake, no match at all) that it's not worth building around. Instead, metadata is typed in explicitly at upload time (Title/Year/Type/Season+Episode/Genre), same philosophy as Nomify's `.txt`-sidecar-driven ID3 tagging. The pipeline writes that data into a local NFO file next to each video, and Jellyfin's library is configured to read local NFO only, with internet providers off. See `docs/SPEC.md` §6.
+
+**Credits are archival, not structured** — the upload form has an optional Credits field for pasting IMDB's "Full Cast & Crew" page as-is, saved as a plain `.txt` sidecar next to the video. Unlike Nomify's Discogs-credits parser (which maps roles into ID3 frames), this is deliberately *not* parsed — IMDB's format is too varied to parse reliably, and there's no equivalent of ID3 tags to write it into anyway. There's no separate Overview/plot field; Credits replaces that role.
 
 ## Explicitly deferred / not yet decided
 

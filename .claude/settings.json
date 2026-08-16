@@ -65,7 +65,11 @@
       "Bash(echo \"pgrep exit: $?\")",
       "Bash(cat /home/nomikos/GIT/nomify/deploy/nomify-upload.service)",
       "Bash(bash -n /home/nomikos/GIT/nomiflix/deploy/setup-dirs.sh)",
-      "Bash(systemd-analyze verify *)"
+      "Bash(systemd-analyze verify *)",
+      "Bash(bash -n /home/nomikos/GIT/nomiflix/scripts/watcher.sh)",
+      "Bash(python3 -c \"import ast; ast.parse\\(open\\('/home/nomikos/GIT/nomiflix/upload/app.py'\\).read\\(\\)\\)\")",
+      "Bash(python3 -c \"import ast; ast.parse\\(open\\('/home/nomikos/GIT/nomiflix/scripts/process_item.py'\\).read\\(\\)\\)\")",
+      "Bash(python3 -c \"import ast; ast.parse\\(open\\('/home/nomikos/GIT/nomiflix/scripts/write_nfo.py'\\).read\\(\\)\\)\")"
     ],
     "additionalDirectories": [
       "/home/nomikos/GIT/nomiflix/{docs,scripts,deploy}",

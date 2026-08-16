@@ -12,6 +12,7 @@
     background: #383e42; color: #e4e4e4; border: 1px solid #4a5155; border-radius: 3px;
   }
   textarea { height: 8rem; }
+  textarea#credits { height: 16rem; font-family: monospace; }
   button {
     cursor: pointer; margin-top: 1.5rem; background: #4a5155; color: #e4e4e4;
     border: 1px solid #5c6469; border-radius: 3px; padding: 0.5rem 1rem;
@@ -63,11 +64,20 @@
     </div>
   </div>
 
-  <label for="overview">Overview / plot (optional)</label>
-  <textarea id="overview" name="overview"></textarea>
+  <label for="genre">Genre</label>
+  <select id="genre" name="genre" required>
+    <option value="" disabled selected>Choose a genre</option>
+    {% for g in genres %}
+    <option value="{{ g }}">{{ g }}</option>
+    {% endfor %}
+  </select>
 
   <label for="poster">Poster image (optional)</label>
   <input type="file" id="poster" name="poster" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp">
+
+  <label for="credits">Credits (optional)</label>
+  <div class="hint">Paste the IMDB "Full Cast & Crew" page as plain text. Stored as-is next to the video, not parsed.</div>
+  <textarea id="credits" name="credits"></textarea>
 
   <button type="submit">Upload</button>
 </form>

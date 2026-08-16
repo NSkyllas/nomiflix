@@ -22,10 +22,16 @@ find_poster() {
     find "$INBOX" -maxdepth 1 -name "$base-poster.*" -print -quit
 }
 
+find_credits() {
+    local base="$1"
+    local credits="$INBOX/$base-credits.txt"
+    [[ -f "$credits" ]] && echo "$credits"
+}
+
 process_if_ready() {
     local base="$1"
     local json="$INBOX/$base.json"
-    local video poster
+    local video poster credits
 
     [[ -f "$json" ]] || return 0
     video="$(find_video "$base")"
@@ -43,9 +49,11 @@ process_if_ready() {
 
         mv "$video" "$PROCESSING/$(basename "$video")"
         mv "$json" "$PROCESSING/$base.json"
-        # Poster is optional — the upload form may not always send one.
+        # Poster and credits are optional — the upload form may not always send them.
         poster="$(find_poster "$base")"
         [[ -n "$poster" ]] && mv "$poster" "$PROCESSING/$(basename "$poster")"
+        credits="$(find_credits "$base")"
+        [[ -n "$credits" ]] && mv "$credits" "$PROCESSING/$base-credits.txt"
 
         echo "nomiflix: processing $base"
         if python3 "$SCRIPT_DIR/process_item.py" "$LIBRARY_ROOT" "$base"; then

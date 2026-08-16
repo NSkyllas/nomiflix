@@ -46,12 +46,13 @@ Root path confirmed as `/opt/nomiflix`. Open question: disk layout may still nee
 - **Year** (required)
 - **Type**: Movie or Show (required) — the single source of truth for routing. No `_Inbox/Movies/` vs `_Inbox/Shows/` subfoldering — the upload form is the only way a file enters `_Inbox/`, so there's no manual filesystem step left to make redundant with this field
 - **Season / Episode** (required if Type = Show)
-- **Overview/plot** (optional)
+- **Genre** (required) — fixed dropdown, currently `Samurai` / `Science Fiction` / `Greek` / `Western`. Extend the list the same way if more categories come up.
 - **Poster image** (optional)
+- **Credits** (optional) — a raw paste of IMDB's "Full Cast & Crew" page. Stored as-is (`<base>-credits.txt`), **not parsed** — unlike Nomify's structured Discogs-credits parser, IMDB's format varies too much to usefully parse, and the value here is just having it archived next to the file, not queryable. There is no Overview/plot field — Credits replaces that role entirely.
 
-Like Nomify's uploader, the video is saved under a random base name (e.g. `uuid4().hex[:12]`) alongside a metadata sidecar written from the form fields, so there's no filename-collision or matching step left for a human (or the watcher) to get wrong.
+Like Nomify's uploader, the video is saved under a random base name (e.g. `uuid4().hex[:12]`) alongside a metadata sidecar written from the form fields, so there's no filename-collision or matching step left for a human (or the watcher) to get wrong. Poster and credits are separate sidecar files (`<base>-poster.<ext>`, `<base>-credits.txt`), not folded into the JSON — named with a `-suffix` (not `<base>.<ext>`) specifically so they don't collide with `process_item.py`'s video-detection glob.
 
-**Sidecar format decided as JSON** (`<base>.json`), not Nomify's key:value `.txt` — the fields here are flat (title/year/type/season/episode/overview) with no tracklist/credits-style nested structure to parse, so JSON needs no custom parser and is what `process_item.py`/`write_nfo.py`/`move_into_library.py` already consume.
+**Sidecar format decided as JSON** (`<base>.json`), not Nomify's key:value `.txt` — the fields here are flat (title/year/type/season/episode/genre) with no tracklist-style nested structure to parse, so JSON needs no custom parser and is what `process_item.py`/`write_nfo.py`/`move_into_library.py` already consume.
 
 ### 3.2 Trigger
 `inotifywait` watches `_Inbox/` for new/completed file writes (reuse Nomify's watcher pattern — same tool, new logic). Triggers once both the video and its metadata sidecar are present, mirroring how Nomify's watcher waits for the mp3+txt pair.
@@ -98,9 +99,10 @@ Planned approach (to be refined):
 
 **Decided**: no TMDb auto-scraping. Metadata comes entirely from the upload form (§3.1) — same philosophy as Nomify writing ID3 tags directly from its upload form rather than inferring them.
 
-- The pipeline generates a local **NFO file** (`movie.nfo` for movies, per-episode `.nfo` for shows) from the sidecar's Title/Year/Overview/etc., written alongside the final video file when it's moved into `Movies/`/`Shows/` (§3.3 step 5).
+- The pipeline generates a local **NFO file** from the sidecar's Title/Year/Genre/Season+Episode, written as `<video basename>.nfo` alongside the final video file when it's moved into `Movies/`/`Shows/` (§3.3 step 5) — Jellyfin/Kodi both recognize this basename-matching convention, not just `movie.nfo`.
 - Jellyfin's library is configured to use the **"Nfo" local metadata provider** as its source, with internet metadata providers (TMDb) disabled or deprioritized for the Nomiflix libraries specifically — so nothing is auto-matched or guessed; Jellyfin just reads what was explicitly typed in at upload time.
-- Poster image, if uploaded, is saved alongside as `poster.jpg`/`folder.jpg` (Jellyfin's local-image convention) rather than fetched from TMDb.
+- Poster image, if uploaded, is saved alongside as `<video basename>-poster.<ext>` (Jellyfin/Kodi's basename-matching local-artwork convention) rather than fetched from TMDb.
+- Credits, if pasted, are saved alongside as `<video basename>-credits.txt` — raw text, not read by Jellyfin at all, purely an archival sidecar for Nomikos's own reference.
 
 This removes the scraper-mismatch problem (§7 old note) entirely rather than working around it — there's no automated matching step to get wrong.
 

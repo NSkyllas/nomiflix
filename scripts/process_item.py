@@ -38,6 +38,11 @@ def find_poster_file(processing, base):
     return candidates[0] if candidates else None
 
 
+def find_credits_file(processing, base):
+    path = os.path.join(processing, base + "-credits.txt")
+    return path if os.path.isfile(path) else None
+
+
 def log_outcome(library_root, message):
     logs_dir = os.path.join(library_root, "logs")
     os.makedirs(logs_dir, exist_ok=True)
@@ -58,11 +63,11 @@ def move_to_failed(library_root, paths, base, reason):
     log_outcome(library_root, f"{base}: FAILED — {reason.splitlines()[0]}")
 
 
-def process_item(video_path, metadata_path, poster_path, library_root):
+def process_item(video_path, metadata_path, poster_path, credits_path, library_root):
     """Returns (dest_path, branch). Raises ExpectedError on any
     user-fixable failure; never touches video_path/metadata_path/
-    poster_path on failure — the caller is responsible for routing them to
-    _Failed/."""
+    poster_path/credits_path on failure — the caller is responsible for
+    routing them to _Failed/."""
     with open(metadata_path, encoding="utf-8") as f:
         metadata = json.load(f)
 
@@ -92,6 +97,10 @@ def process_item(video_path, metadata_path, poster_path, library_root):
         poster_dest = os.path.splitext(dest)[0] + "-poster" + os.path.splitext(poster_path)[1]
         shutil.move(poster_path, poster_dest)
 
+    if credits_path:
+        credits_dest = os.path.splitext(dest)[0] + "-credits.txt"
+        shutil.move(credits_path, credits_dest)
+
     write_nfo(dest, metadata)
     return dest, probe_result["branch"]
 
@@ -106,18 +115,19 @@ def main():
     video_path = find_video_file(processing, base)
     metadata_path = os.path.join(processing, base + ".json")
     poster_path = find_poster_file(processing, base)
+    credits_path = find_credits_file(processing, base)
 
     if not video_path or not os.path.isfile(metadata_path):
         return 0  # not a complete pair (yet) — already handled or not ready
 
     try:
-        dest, branch = process_item(video_path, metadata_path, poster_path, library_root)
+        dest, branch = process_item(video_path, metadata_path, poster_path, credits_path, library_root)
     except ExpectedError as exc:
-        move_to_failed(library_root, [video_path, metadata_path, poster_path], base, str(exc))
+        move_to_failed(library_root, [video_path, metadata_path, poster_path, credits_path], base, str(exc))
         return 1
     except Exception:
         move_to_failed(
-            library_root, [video_path, metadata_path, poster_path], base,
+            library_root, [video_path, metadata_path, poster_path, credits_path], base,
             f"unexpected error:\n{traceback.format_exc()}",
         )
         return 1

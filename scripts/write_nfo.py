@@ -37,12 +37,12 @@ def _to_xml_bytes(root):
 def build_movie_nfo(metadata):
     title = _require(metadata, "title")
     year = _require(metadata, "year")
+    genre = _require(metadata, "genre")
 
     root = ET.Element("movie")
     ET.SubElement(root, "title").text = title
     ET.SubElement(root, "year").text = str(year)
-    if metadata.get("overview"):
-        ET.SubElement(root, "plot").text = metadata["overview"]
+    ET.SubElement(root, "genre").text = genre
 
     return _to_xml_bytes(root)
 
@@ -51,13 +51,13 @@ def build_episode_nfo(metadata):
     title = _require(metadata, "title")
     season = _require(metadata, "season")
     episode = _require(metadata, "episode")
+    genre = _require(metadata, "genre")
 
     root = ET.Element("episodedetails")
     ET.SubElement(root, "title").text = title
     ET.SubElement(root, "season").text = str(season)
     ET.SubElement(root, "episode").text = str(episode)
-    if metadata.get("overview"):
-        ET.SubElement(root, "plot").text = metadata["overview"]
+    ET.SubElement(root, "genre").text = genre
 
     return _to_xml_bytes(root)
 
