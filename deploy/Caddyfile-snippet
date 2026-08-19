@@ -8,3 +8,7 @@
 nomiflix.duckdns.org {
 	reverse_proxy 127.0.0.1:8081
 }
+
+nomiflix-jellyfin.duckdns.org {
+	reverse_proxy 127.0.0.1:8096
+}

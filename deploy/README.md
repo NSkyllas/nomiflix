@@ -31,7 +31,15 @@ Hit on the real VPS: the first real upload failed with `PermissionError: /opt/no
 - `ffmpeg`, `inotify-tools`, `python3-flask` installed — `nomiflix-inbox-watcher` and `nomiflix-upload` are running and have processed a real upload (probe/transcode succeeded; it only failed at the `Movies/` mkdir step, see fix above).
 - DuckDNS subdomain + Caddy reverse proxy working — upload form is reachable and accepting real uploads.
 
+## Jellyfin — installed and reachable (2026-08-19)
+
+- Installed natively via Jellyfin's official apt repo (`curl -fsSL https://repo.jellyfin.org/install-debuntu.sh | sudo bash`) — matches the no-Docker constraint, runs as its own `jellyfin.service` (not coupled to Nomiflix's own systemd units).
+- Listens on `127.0.0.1:8096`/`0.0.0.0:8096` by default, but `ufw` only allows 22/80/443 — same "never open the app port directly" pattern as the upload form, reachable only through Caddy.
+- New DuckDNS subdomain `nomiflix-jellyfin` added under the same account/token as `nomiflix` — `duckdns.env`'s `DUCKDNS_SUBDOMAIN` updated to `nomiflix,nomiflix-jellyfin` (DuckDNS's update endpoint accepts a comma-separated list in one call, same as Nomify's `nomify,nomify-navidrome`).
+- Caddy block added to `/etc/caddy/Caddyfile` (see `Caddyfile-snippet`) and reloaded — `https://nomiflix-jellyfin.duckdns.org` confirmed serving (200 from `/health`).
+- Web UI setup done: admin account created; Movies/Shows libraries added pointed at `/opt/nomiflix/Movies` and `/opt/nomiflix/Shows`; both libraries' metadata fetchers (TheMovieDb/TheTVDB) disabled, Nfo reader enabled — confirmed against a real library item (title/year/genre/poster/credits all coming from the local NFO/poster, not fetched).
+- Dashboard > Scheduled Tasks: **Generate Trickplay Images** and **Extract Chapter Images** disabled — both are CPU-bound background jobs that would otherwise compete with sequential ffmpeg transcodes on the same 4 vCPUs (hard constraint #2 in `CLAUDE.md`).
+
 ## Not done yet
 
-- Jellyfin: not confirmed installed. Once it is, the Nomiflix libraries need internet metadata providers (TMDb) turned off/deprioritized in favor of the local "Nfo" provider — see `docs/SPEC.md` §6. This is a one-time manual step in Jellyfin's web UI, not something a script can drive.
 - `handbrake_extract.py` (local DVD extraction, see SPEC §5) has no deploy story since it deliberately never runs on the VPS.

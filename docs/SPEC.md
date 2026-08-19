@@ -133,4 +133,5 @@ Keep this section current — move items here as they come up, remove once resol
 - [x] Movie vs. series detection mechanism at upload time — a Type field (Movie/Show) on the upload form (§3.1); no `_Inbox/` subfoldering, since the form is the only entry point
 - [x] DVD extraction: VPS or local? — local, upload only the extracted output
 - [x] Metadata override mechanism for scraper mismatches — resolved by not using a scraper at all; metadata is typed in at upload and written to local NFO files (§6)
+- [x] Jellyfin install/config — installed natively via official apt repo, reachable at `https://nomiflix-jellyfin.duckdns.org` via Caddy (port 8096 not opened in `ufw`, same never-expose-app-port pattern as the upload form). Movies/Shows libraries added, TMDb fetchers disabled, Nfo reader enabled, confirmed reading real local metadata/artwork/credits correctly. Trickplay/chapter-image scheduled tasks disabled to avoid CPU contention with transcode jobs. See `deploy/README.md`.
 - [ ] When/how to revisit storage strategy (block storage vs. external) — revisit after a few months per CLAUDE.md
