@@ -41,16 +41,19 @@ Root path confirmed as `/opt/nomiflix`. Open question: disk layout may still nee
 
 **Decided**: a small Flask upload form, directly mirroring Nomify's `upload/app.py`, is the sole entry point into `_Inbox/` — no direct file drops. Fields:
 
-- **Video file** (required)
+- **Video file(s)** (required) — a Show upload accepts multiple files in one submission (a batch of episodes); a Movie upload is restricted to exactly one. All other fields below are entered once and applied to every file in the batch.
 - **Title** (required)
-- **Year** (required)
+- **Year** (required for a Movie; required for a Show only the first time it's uploaded — see below)
 - **Type**: Movie or Show (required) — the single source of truth for routing. No `_Inbox/Movies/` vs `_Inbox/Shows/` subfoldering — the upload form is the only way a file enters `_Inbox/`, so there's no manual filesystem step left to make redundant with this field
-- **Season / Episode** (required if Type = Show)
-- **Genre** (required) — fixed dropdown, currently `Samurai` / `Science Fiction` / `Greek` / `Western`. Extend the list the same way if more categories come up.
+- **Season** (required if Type = Show) — one value for the whole batch; a show is uploaded one season at a time (possibly across several batches, e.g. a few episodes per visit)
+- **Episode** (required if Type = Show) — one number per video file, positionally paired with the selected files by the page's JS (auto-numbered sequentially from a "Starting episode" field, editable per file before submitting)
+- **Genre** (required unless auto-filled — see below) — fixed dropdown, see `GENRES` in `upload/app.py` for the current list.
 - **Poster image** (optional)
 - **Credits** (optional) — a raw paste of IMDB's "Full Cast & Crew" page, uploaded as `<base>-credits.txt` and **parsed** by `scripts/parse_credits.py` during processing (§3.3 step 5) into department-grouped Name/role/alias/uncredited/voice records — see §6 for what happens to the result. A bad/unrecognized paste fails the **whole item** (routed to `_Failed/`, same as a transcode failure) rather than degrading gracefully — credits parsing is fail-loud like Nomify's tracklist/credits parsing, not best-effort. There is no Overview/plot field — Credits replaces that role entirely.
 
-Like Nomify's uploader, the video is saved under a random base name (e.g. `uuid4().hex[:12]`) alongside a metadata sidecar written from the form fields, so there's no filename-collision or matching step left for a human (or the watcher) to get wrong. Poster and credits are separate sidecar files (`<base>-poster.<ext>`, `<base>-credits.txt`), not folded into the JSON — named with a `-suffix` (not `<base>.<ext>`) specifically so they don't collide with `process_item.py`'s video-detection glob.
+Like Nomify's uploader, each video is saved under its own random base name (e.g. `uuid4().hex[:12]`) alongside a metadata sidecar written from the form fields, so there's no filename-collision or matching step left for a human (or the watcher) to get wrong. A batch Show upload writes one such base-name/sidecar pair per file — the watcher and `process_item.py` see N independent items, not a batch, so nothing downstream of the upload form changed to support this. Poster and credits are separate sidecar files (`<base>-poster.<ext>`, `<base>-credits.txt`), not folded into the JSON — named with a `-suffix` (not `<base>.<ext>`) specifically so they don't collide with `process_item.py`'s video-detection glob.
+
+**Existing-show detection**: `GET /show-lookup?title=...` checks whether `Shows/<sanitized title>/` already exists in the library and, if so, reads `<genre>` back out of any episode NFO found under it. The upload page calls this live as the Title field is typed (debounced) and, when it matches, drops the Year requirement and pre-fills Genre — so a follow-up batch (e.g. episodes 6-10 after 1-5) only needs Video file(s) + Season + Episode numbers. `/upload` independently re-runs the same check and enforces it server-side; the lookup endpoint is UX only, not the source of truth. Year is skipped rather than "copied" because it isn't persisted for shows in the first place — `move_into_library.py`'s `Shows/` path and `write_nfo.py`'s episode NFO both omit it.
 
 **Sidecar format decided as JSON** (`<base>.json`), not Nomify's key:value `.txt` — the fields here are flat (title/year/type/season/episode/genre) with no tracklist-style nested structure to parse, so JSON needs no custom parser and is what `process_item.py`/`write_nfo.py`/`move_into_library.py` already consume.
 

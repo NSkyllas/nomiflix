@@ -25,6 +25,9 @@
   .row { display: flex; gap: 1rem; }
   .row > div { flex: 1; }
   #show-fields { display: none; }
+  .episode-row { display: flex; gap: 1rem; align-items: center; margin-top: 0.4rem; }
+  .episode-row .filename { flex: 1; font-size: 0.9rem; color: #a9adaf; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .episode-row input { width: 5rem; flex: none; }
   #progress-container { display: none; margin-top: 1rem; }
   #progress-bar-track { width: 100%; height: 1.2rem; background: #383e42; border: 1px solid #4a5155; border-radius: 3px; overflow: hidden; }
   #progress-bar-fill { height: 100%; width: 0%; background: #a3d9a5; transition: width 0.15s ease; }
@@ -37,50 +40,55 @@
 {% if success %}<div class="msg success">{{ success }}</div>{% endif %}
 
 <form method="post" action="/upload" enctype="multipart/form-data">
-  <label for="video">Video file</label>
-  <input type="file" id="video" name="video" required>
+  <label for="video">Video file(s)</label>
+  <div class="hint" id="video-hint">For a Show, you can select multiple episode files at once — Title/Genre/Poster/Credits below apply to all of them, and each file gets its own episode number.</div>
+  <input type="file" id="video" name="video" multiple required>
 
   <label for="title">Title</label>
   <div class="hint" id="title-hint">The movie title. For a Show, this is the show name (used for every episode).</div>
-  <input type="text" id="title" name="title" required>
+  <input type="text" id="title" name="title" value="{{ sticky_title|default('') }}" required>
 
   <label for="year">Year</label>
-  <input type="text" id="year" name="year" pattern="[0-9]{4}" placeholder="1954" required>
+  <div class="hint" id="year-hint" style="display:none;">Existing show detected — Year isn't needed for additional episode batches.</div>
+  <input type="text" id="year" name="year" pattern="[0-9]{4}" placeholder="1954" value="{{ sticky_year|default('') }}" required>
 
   <label for="type">Type</label>
   <select id="type" name="type" required>
-    <option value="" disabled selected>Choose a type</option>
-    <option value="movie">Movie</option>
-    <option value="show">Show</option>
+    <option value="" disabled {% if not sticky_type %}selected{% endif %}>Choose a type</option>
+    <option value="movie" {% if sticky_type == 'movie' %}selected{% endif %}>Movie</option>
+    <option value="show" {% if sticky_type == 'show' %}selected{% endif %}>Show</option>
   </select>
 
   <div id="show-fields">
     <div class="row">
       <div>
         <label for="season">Season</label>
-        <input type="text" id="season" name="season" placeholder="1">
+        <input type="text" id="season" name="season" placeholder="1" value="{{ sticky_season|default('') }}">
       </div>
       <div>
-        <label for="episode">Episode</label>
-        <input type="text" id="episode" name="episode" placeholder="1">
+        <label for="starting-episode">Starting episode</label>
+        <input type="text" id="starting-episode" placeholder="1" value="{{ sticky_starting_episode|default('1') }}">
       </div>
     </div>
+    <div class="hint">One row per selected file, numbered from "Starting episode" in file-picker order — fix any that are out of order before uploading.</div>
+    <div id="episode-list"></div>
   </div>
 
   <label for="genre">Genre</label>
   <select id="genre" name="genre" required>
-    <option value="" disabled selected>Choose a genre</option>
+    <option value="" disabled {% if not sticky_genre %}selected{% endif %}>Choose a genre</option>
     {% for g in genres %}
-    <option value="{{ g }}">{{ g }}</option>
+    <option value="{{ g }}" {% if sticky_genre == g %}selected{% endif %}>{{ g }}</option>
     {% endfor %}
   </select>
 
   <label for="poster">Poster image (optional)</label>
+  <div class="hint">Not carried over between batches (browsers won't prefill file inputs) — reselect it if this batch needs one, e.g. the first batch of a show.</div>
   <input type="file" id="poster" name="poster" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp">
 
   <label for="credits">Credits (optional)</label>
   <div class="hint">Paste the IMDB "Full Cast & Crew" page as plain text. Director/Writer/Cast get parsed in; unrecognized formatting fails the whole upload rather than silently dropping data.</div>
-  <textarea id="credits" name="credits"></textarea>
+  <textarea id="credits" name="credits">{{ sticky_credits|default('') }}</textarea>
 
   <div id="progress-container">
     <div id="progress-bar-track"><div id="progress-bar-fill"></div></div>
@@ -94,14 +102,76 @@
   const typeSelect = document.getElementById("type");
   const showFields = document.getElementById("show-fields");
   const titleHint = document.getElementById("title-hint");
+  const videoInput = document.getElementById("video");
+  const startingEpisodeInput = document.getElementById("starting-episode");
+  const episodeList = document.getElementById("episode-list");
+  const titleInput = document.getElementById("title");
+  const yearInput = document.getElementById("year");
+  const yearHint = document.getElementById("year-hint");
+  const genreSelect = document.getElementById("genre");
+
+  // Pure UX sugar — /upload independently re-checks whether the show
+  // already exists and enforces requirements itself either way.
+  let showLookupTimer = null;
+
+  function applyShowLookup(result) {
+    const isExisting = typeSelect.value === "show" && !!(result && result.exists);
+    yearInput.required = !isExisting;
+    yearHint.style.display = isExisting ? "block" : "none";
+    if (isExisting && result.genre && !genreSelect.value) {
+      genreSelect.value = result.genre;
+    }
+  }
+
+  function lookupShow() {
+    const title = titleInput.value.trim();
+    if (typeSelect.value !== "show" || !title) {
+      applyShowLookup(null);
+      return;
+    }
+    fetch("/show-lookup?title=" + encodeURIComponent(title))
+      .then(function (r) { return r.json(); })
+      .then(applyShowLookup)
+      .catch(function () {});
+  }
+
+  titleInput.addEventListener("input", function () {
+    clearTimeout(showLookupTimer);
+    showLookupTimer = setTimeout(lookupShow, 400);
+  });
+
+  function renderEpisodeList() {
+    episodeList.innerHTML = "";
+    if (typeSelect.value !== "show") return;
+    const start = parseInt(startingEpisodeInput.value, 10) || 1;
+    Array.from(videoInput.files).forEach(function (file, i) {
+      const row = document.createElement("div");
+      row.className = "episode-row";
+      const name = document.createElement("div");
+      name.className = "filename";
+      name.textContent = file.name;
+      const input = document.createElement("input");
+      input.type = "text";
+      input.name = "episode";
+      input.required = true;
+      input.value = String(start + i);
+      row.appendChild(name);
+      row.appendChild(input);
+      episodeList.appendChild(row);
+    });
+  }
 
   function syncShowFields() {
     const isShow = typeSelect.value === "show";
     showFields.style.display = isShow ? "block" : "none";
     titleHint.style.display = isShow ? "block" : "none";
+    renderEpisodeList();
+    lookupShow();
   }
 
   typeSelect.addEventListener("change", syncShowFields);
+  videoInput.addEventListener("change", renderEpisodeList);
+  startingEpisodeInput.addEventListener("input", renderEpisodeList);
   syncShowFields();
 
   const form = document.querySelector("form");
@@ -112,6 +182,12 @@
 
   form.addEventListener("submit", function (e) {
     e.preventDefault();
+
+    if (typeSelect.value === "movie" && videoInput.files.length > 1) {
+      progressContainer.style.display = "none";
+      alert("A Movie upload supports a single video file only.");
+      return;
+    }
 
     const xhr = new XMLHttpRequest();
     xhr.open("POST", form.action);
