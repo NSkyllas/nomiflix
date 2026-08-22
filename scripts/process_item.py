@@ -19,7 +19,7 @@ from move_into_library import MoveError, move_into_library
 from parse_credits import CreditsParseError, parse_credits
 from probe import BRANCH_SKIP, ProbeError, probe
 from transcode import TranscodeError, transcode
-from write_nfo import NfoError, write_nfo
+from write_nfo import TYPE_SHOW, NfoError, write_nfo
 
 ExpectedError = (ProbeError, TranscodeError, MoveError, NfoError, CreditsParseError)
 
@@ -101,9 +101,19 @@ def process_item(video_path, metadata_path, poster_path, credits_path, library_r
         os.remove(video_path)
 
     if poster_path:
-        # Same basename-suffix convention as the NFO — Jellyfin/Kodi both
-        # recognize "<video basename>-poster.<ext>" as local artwork.
-        poster_dest = os.path.splitext(dest)[0] + "-poster" + os.path.splitext(poster_path)[1]
+        poster_ext = os.path.splitext(poster_path)[1]
+        if metadata.get("type") == TYPE_SHOW:
+            # Series artwork belongs in the show's own folder (Shows/<Show
+            # Name>/), not next to one episode — Jellyfin reads a bare
+            # "poster.<ext>" there as the series poster. Episode dest is
+            # Shows/<Show Name>/Season NN/<file>, so up two levels.
+            series_dir = os.path.dirname(os.path.dirname(dest))
+            poster_dest = os.path.join(series_dir, "poster" + poster_ext)
+        else:
+            # Same basename-suffix convention as the NFO — Jellyfin/Kodi
+            # both recognize "<video basename>-poster.<ext>" as local
+            # artwork.
+            poster_dest = os.path.splitext(dest)[0] + "-poster" + poster_ext
         shutil.move(poster_path, poster_dest)
 
     if credits_path:

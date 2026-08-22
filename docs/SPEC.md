@@ -104,7 +104,7 @@ Planned approach (to be refined):
 
 - The pipeline generates a local **NFO file** from the sidecar's Title/Year/Genre/Season+Episode, written as `<video basename>.nfo` alongside the final video file when it's moved into `Movies/`/`Shows/` (§3.3 step 5) — Jellyfin/Kodi both recognize this basename-matching convention, not just `movie.nfo`.
 - Jellyfin's library is configured to use the **"Nfo" local metadata provider** as its source, with internet metadata providers (TMDb) disabled or deprioritized for the Nomiflix libraries specifically — so nothing is auto-matched or guessed; Jellyfin just reads what was explicitly typed in at upload time.
-- Poster image, if uploaded, is saved alongside as `<video basename>-poster.<ext>` (Jellyfin/Kodi's basename-matching local-artwork convention) rather than fetched from TMDb.
+- Poster image, if uploaded, is saved as local artwork rather than fetched from TMDb. For a movie it's `<video basename>-poster.<ext>` alongside the video (Jellyfin/Kodi's basename-matching convention). For a series episode, artwork is series-level, not episode-level — it's saved as `poster.<ext>` directly in the show's own folder (`Shows/<Show Name>/`), since that's where Jellyfin looks for series artwork; saving it next to the episode file would make Jellyfin treat it as that episode's thumbnail instead.
 
 This removes the scraper-mismatch problem (§7 old note) entirely rather than working around it — there's no automated matching step to get wrong.
 
